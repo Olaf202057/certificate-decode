@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="jsrsasign : The 'jsrsasign' (RSA-Sign JavaScript Library) is a open source free pure JavaScript implementation of PKCS#1 v2.1 RSASSA-PKCS1-v1_5 RSA signing and validation algorithm." />
+
+    <link rel="stylesheet" type="text/css" media="screen" href="../stylesheets/stylesheet.css">
+    <title>JS Certification Authority :)</title>
+<!-- for pkcs5pkey -->
+<script language="JavaScript" type="text/javascript" src="../jsrsasign-all-min.js"></script>
+<script language="JavaScript" type="text/javascript">
+function doIssue() {
+  var f1 = document.form1;
+
+  f1.newcert1.value = "issuing ...";
+
+  // 1. generate TBSCertificate
+  var tbsc = new KJUR.asn1.x509.TBSCertificate();
+  tbsc.setSerialNumberByParam({'int': parseInt(f1.serial1.value)});
+  tbsc.setSignatureAlgByParam({'name': 'SHA256withRSA'});
+  tbsc.setIssuerByParam({'str': f1.issuer1.value});  
+  tbsc.setNotBeforeByParam({'str': f1.notbefore1.value});
+  tbsc.setNotAfterByParam({'str': f1.notafter1.value});
+  tbsc.setSubjectByParam({'str': f1.subject1.value});  
+  tbsc.setSubjectPublicKeyByGetKey(f1.pubkey1.value);
+
+  if (f1.bc_exists.checked) {
+    var param = {};
+    param['critical'] = (f1.bc_critical.checked)? true : false;
+    param['cA'] = (f1.bc_ca.checked)? true : false;
+    if (f1.bc_pathlen.value != '') {
+      param['pathLen'] = parseInt(f1.bc_pathlen.value);
+    }
+    tbsc.appendExtension(new KJUR.asn1.x509.BasicConstraints(param));
+  }
+
+  if (f1.ku_exists.checked) {
+    var param = {};
+    param['critical'] = (f1.ku_critical.checked)? true : false;
+    var sBin = '';
+    sBin += (f1.ku_0dsig.checked) ? "1" : "0";
+    sBin += (f1.ku_1nonrep.checked) ? "1" : "0";
+    sBin += (f1.ku_2keyenc.checked) ? "1" : "0";
+    sBin += (f1.ku_3datenc.checked) ? "1" : "0";
+    sBin += (f1.ku_4keyagree.checked) ? "1" : "0";
+    sBin += (f1.ku_5keycertsign.checked) ? "1" : "0";
+    sBin += (f1.ku_6crlsign.checked) ? "1" : "0";
+    sBin += (f1.ku_7enconly.checked) ? "1" : "0";
+    sBin += (f1.ku_8deconly.checked) ? "1" : "0";
+    param['bin'] = sBin;
+    tbsc.appendExtension(new KJUR.asn1.x509.KeyUsage(param));
+  }
+
+  if (f1.eku_exists.checked) {
+    var param = {};
+    var a = [];
+    param.critical = (f1.eku_critical.checked) ? true : false;
+    if (f1.eku_srv.checked)   a.push({name: 'serverAuth'});
+    if (f1.eku_cli.checked)   a.push({name: 'clientAuth'});
+    if (f1.eku_code.checked)  a.push({name: 'codeSigning'});
+    if (f1.eku_email.checked) a.push({name: 'emailProtection'});
+    if (f1.eku_time.checked)  a.push({name: 'timeStamping'});
+    param.array = a;
+    var ext = new KJUR.asn1.x509.ExtKeyUsage(param);
+    tbsc.appendExtension(ext);
+  }
+
+  if (f1.cdp_exists.checked && f1.cdp_uri.value != '') {
+    var param = {};
+    param['critical'] = (f1.cdp_critical.checked)? true : false;
+    param['uri'] = f1.cdp_uri.value;
+    tbsc.appendExtension(new KJUR.asn1.x509.CRLDistributionPoints(param));
+  }
+
+  // SAN
+  var aSAN = [];
+  if (f1.san1_val.value !== "") {
+    var san = {};
+    san[f1.san1_type.value] = f1.san1_val.value;
+    aSAN.push(san);
+  }
+  if (f1.san2_val.value !== "") { 
+    var san = {};
+    san[f1.san2_type.value] = f1.san2_val.value;
+    aSAN.push(san);
+  }
+  if (f1.san3_val.value !== "") {
+    var san = {};
+    san[f1.san3_type.value] = f1.san3_val.value;
+    aSAN.push(san);
+  }
+  if (aSAN.length !== 0) {
+    var param = {};
+    param.critical = (f1.san_critical.checked) ? true : false;
+    param.array = aSAN;
+    tbsc.appendExtensionByName("SubjectAltName", param);
+  }
+
+  // generate and sign certificate
+  var caKey = KEYUTIL.getKey.apply(null, [f1.cakey1.value, f1.cakeypass1.value]);
+  var cert = new KJUR.asn1.x509.Certificate({tbscertobj: tbsc,
+                                             prvkeyobj: caKey});
+  cert.sign();
+  f1.newcert1.value = cert.getPEMString();
+}
+</script>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <h1 id="project_title">JS Certification Authority</h1>
+          <h2 id="project_tagline">This is the world's first test certification authority by pure JavaScript ;)</h2>
+
+          <a href="https://kjur.github.io/jsrsasign/">TOP</a> | 
+          <a href="https://github.com/kjur/jsrsasign/tags/" target="_blank">DOWNLOADS</a> | 
+          <a href="https://github.com/kjur/jsrsasign/wiki#programming-tutorial">TUTORIALS</a> | 
+          <a href="https://kjur.github.io/jsrsasign/api/" target="_blank">API REFERENCE</a> | 
+          <a href="https://kjur.github.io/jsrsasign/index.html#demo" target="_blank">DEMOS</a> | 
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+
+<!-- now editing -->
+<form name="form1">
+<h4>(Step1) Fill CA private key (PEM formatted PKCS#5 RSA key) and passcode</h4>
+<textarea name="cakey1" cols="80" rows="6">-----BEGIN RSA PRIVATE KEY-----
+Proc-Type: 4,ENCRYPTED
+DEK-Info: DES-EDE3-CBC,A6AE7A163CC2609A
+
+DtnpA2/qSFl0xKMETlh4oMxeo7PZSpX4+7Oo6yNvncNBGzzdLerMfo9vmjNGRJY2
+L2DhpI2XxQwNTlNZFKi/9kjDOV79d14Pkw14AC74ZpiRZhEQoXcxHVuQPJir2ym5
+oLWGQ1o3e6W0iIJJSPV9REv82TtBAOAhs6yKcm8pRhXlMPh1v4x5uYJJ7QhJBzii
+FMQUkY+fsFCU5KSvN2mvNV71pW63Tk7p8y61+UjZxvC3TPv5JiY+7hsNGw/GqwPS
+Zykh1G2YT6HhFp/Ym5ngbZi8UiuR7rtwR/zKLSJzKoGU3aWUKUssWLLUUZfxrKYa
+XiT4w49daOJmFJ7TcYo/w/9NTHDqQjFJUmUAbzluWgNRLv43MX0/rOzYprkp2Jl0
+mkzy+YGw5PR7zyLheMPrork14eBY/uVR327SsGEogP9Y4t8wlwp9dSaxmaPe7/yi
+nQRqPSJqbD+9gJqZRYrfN4cq+dibu2v/P1z7rZ/nmKPxiq4m4OSOl2ah8ZuQjPkd
+lyD5LXMUYRVX9BaKMYGT8YwlvUJJ0LgSYYUnyDzPm3posWoj+BNuLnybRDvHCnGZ
+DxPlHOI47swSQ4j4Khcv3O1V/UXIoREw+Fz7IGKqUb7Ku9cNjr7h4zJrbLRwksZ7
+VtTH73u+IB98qkDBIaTKNSEJ8DsxQ6xFZTnfZsYcDvXVfoUoF1sfL0sTmgvrNqUn
+OG9V34LwWOxfMc/SIFX/06u8TuAow+7PH0rvLzqdRrZme8iG4bNNcQClaiJzcFjC
+ZKazMs0Pt1sc/htY3SjXEqGvdlXJWg8q5nOOtx6TBAbJphtNrfmRBuQK5jV4g4bs
+W1p1q7KHvyq3qONIRPtGCT10sB7Ss5PT1WxscXyWDKMnPtEFCX85fNCMEfqSUsFd
+ny2kq8CDcVWYeoAbWZ8wi/QgJFoVE3/ktVxUHMSbH2f4mbpYcHEgD7A+xNQCYgIC
+bAUZqMGnmiXXVBRCROSsYSaM0AgeXMd1htvqvuLsWSsJpbD5eAbMMSIyrDKbHkU5
+A8oe013Woa/M7OReXTC/lUp4XE/IjK19aXqN2A6LbU15kMx5e1inDZ3ZLQaMb2+j
+fkysSkGpQRxoD95BmuiQJmXfRl+gHt3EX4kd6E9an8/t6jrRsfgXFN98eCiB5lGw
+Q35OzV3EeYV6n4QSEOJgkB42b8oeGbmpHf6dEWVksTtGNJRNYW0elXVCW2L/6bOA
+PiPQR2y5fbaNntBjsisGG9XDMK7Nexn+NOQYqBvEr5Z4p/odci2q/yPvkWdIYW6q
+NyEJG3R48H4OB5ZfXa168oQolke//2J1Bz9BYcxHRtT/WnfQeU5XS1LXbuJ83Q51
+/g6HqxRCng+4cLHuOTZ5sZa9qelbWllS8/D21CUGzUP28/2IGgdCqM+goZQZUH4E
+0PSEC4YbhvNqz4g8+TG+WKYFJOyTk0ntYkSitQAzDmA/rIQuIbQ9+JAj4g+fCjXJ
+gpeOxNW7g4FC0ZrzJhHiblwk7i7PthBDFOkEPGMDMFSMUzzkOxBcBiQ7oKVZXPuE
+ectXs6OFc5EXAkUZzgI/dsoGaqv7b1ikarKWdX1HqiRpxLO/Ol17Pg==
+-----END RSA PRIVATE KEY-----</textarea>
+<br/>
+CA KEY PASSCODE(=hoge): <input type="password" name="cakeypass1" value="hoge" size="0"/> 
+<br/>
+
+<!-- ============================================================== -->
+
+<h4>(Step2) Fill Issuing Certificate Fields</h4>
+<table>
+<tr><td>Serial:</td><td><input type="text" name="serial1" value="76" size="20"/></td></tr>
+<tr><td>Issuer DN:</td><td><input type="text" name="issuer1" value="/C=US/O=JS-TEST-CA" size="80"/></td></tr>
+<tr><td>Validity:</td><td>
+From <input type="text" name="notbefore1" value="130501235959Z" size="20"/>
+To <input type="text" name="notafter1" value="230501235959Z" size="20"/>
+</td></tr>
+<tr><td>Subjec DN:</td><td><input type="text" name="subject1" value="/C=US/CN=Test User1" size="80"/></td></tr>
+<tr><td>Subject<br/>Public Key</td><td>
+<textarea name="pubkey1" cols="80" rows="3">-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4qiw8PWs7PpnnC2BUEoD
+RcwXF8pq8XT1/3Hc3cuUJwX/otNefr/Bomr3dtM0ERLN3DrepCXvuzEU5FcJVDUB
+3sI+pFtjjLBXD/zJmuL3Afg91J9p79+Dm+43cR6wuKywVJx5DJIdswF6oQDDzhwu
+89d2V5x02aXB9LqdXkPwiO0eR5s/xHXgASl+hqDdVL9hLod3iGa9nV7cElCbcl8U
+VXNPJnQAfaiKazF+hCdl/syrIh0KCZ5opggsTJibo8qFXBmG4PkT5YbhHE11wYKI
+LwZFSvZ9iddRPQK3CtgFiBnXbVwU5t67tn9pMizHgypgsfBoeoyBrpTuc4egSCpj
+sQIDAQAB
+-----END PUBLIC KEY-----</textarea><br/>
+NOTE: This shall be 'BEGIN PUBLIC KEY', not 'BEGIN RSA PUBLIC KEY'.</td></tr>
+<tr><td colspan="2">
+Basic Constraints: 
+exists<input type="checkbox" name="bc_exists" value="1" checked/>
+critical<input type="checkbox" name="bc_critical" value="1" checked/>
+cAflag<input type="checkbox" name="bc_ca" value="1"/>
+pathLen<input type="text" name="bc_pathlen" size="3"/>
+</td></tr>
+<tr><td colspan="2">
+Key Usage: 
+exists<input type="checkbox" name="ku_exists" value="1" checked/>
+critical<input type="checkbox" name="ku_critical" value="1"/>
+<br/>
+<input type="checkbox" name="ku_0dsig" value="1" checked/> digitalSignature(0)
+<input type="checkbox" name="ku_1nonrep" value="1"/> nonRepudiation(1)
+<input type="checkbox" name="ku_2keyenc" value="1"/> keyEncipherment(2)<br/>
+<input type="checkbox" name="ku_3datenc" value="1"/> dataEncipherment(3)
+<input type="checkbox" name="ku_4keyagree" value="1"/> keyAgreement(4)
+<input type="checkbox" name="ku_5keycertsign" value="1"/> keyCertSign(5)<br/>
+<input type="checkbox" name="ku_6crlsign" value="1"/> cRLSign(6)
+<input type="checkbox" name="ku_7enconly" value="1"/> encipherOnly(7)
+<input type="checkbox" name="ku_8deconly" value="1"/> decipherOnly(8)<br/>
+</td></tr>
+<tr><td colspan="2">
+Extended Key Usage:
+exists<input type="checkbox" name="eku_exists" value="1"/>
+critical<input type="checkbox" name="eku_critical" value="1"/>
+<br/>
+<input type="checkbox" name="eku_srv" value="1"/> serverAuth
+<input type="checkbox" name="eku_cli" value="1"/> clientAuth
+<input type="checkbox" name="eku_code" value="1"/> codeSigning
+<input type="checkbox" name="eku_email" value="1"/> emailProtection
+<input type="checkbox" name="eku_time" value="1"/> timeStamping
+</td></tr>
+<tr><td colspan="2">
+CRL DistributionPoints: 
+exists<input type="checkbox" name="cdp_exists" value="1" checked/>
+critical<input type="checkbox" name="cdp_critical" value="1"/>
+<br/>
+URL<input type="text" name="cdp_uri" value="http://crl.example.com/jsca.crl" size="80"/>
+</td></tr>
+<tr><td colspan="2">
+subjectAltName:
+critical<input type="checkbox" name="san_critical" value="0"/>
+<br/>
+<select name="san1_type">
+<option value="dns" selected>DNS
+<option value="rfc822">rfc822
+<option value="uri">URI
+<option value="dn">DN
+<option value="ip">IPAddress
+</select>
+<input type="text" name="san1_val" size="80"><br/>
+
+<select name="san2_type">
+<option value="dns">DNS
+<option value="rfc822" selected>rfc822
+<option value="uri">URI
+<option value="dn">DN
+<option value="ip">IPAddress
+</select>
+<input type="text" name="san2_val" size="80"><br/>
+
+<select name="san3_type">
+<option value="dns">DNS
+<option value="rfc822">rfc822
+<option value="uri" selected>URI
+<option value="dn">DN
+<option value="ip">IPAddress
+</select>
+<input type="text" name="san3_val" size="80"><br/>
+</tr>
+</table>
+
+<h4>(Step3) Press "Issue Certificate" button</h4>
+<input type="button" value="Issue Certificate" onClick="doIssue();"/>
+<input type="reset" name="reset" value="Reset"/>
+
+<h2>Issued Certificate</h2>
+<textarea name="newcert1" cols="80" rows="8"></textarea>
+
+</form>
+
+<!-- now editing -->
+
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">jsrsasign maintained by <a href="https://github.com/kjur">kjur</a></p>
+        <p>Published with <a href="https://pages.github.com">GitHub Pages</a></p>
+<div align="center" style="color: white">
+Copyright &copy; 2010-2018 Kenji Urushima. All rights reserved.
+</div>
+      </footer>
+    </div>
+
+  </body>
+</html>
